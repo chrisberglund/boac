@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/christopherberglund/Projects/boac/helpers.c
+
+/Users/christopherberglund/Projects/boac/helpers.h
+
+/Users/christopherberglund/Projects/boac/library.c
+stdio.h
+-
+math.h
+-
+stdlib.h
+-
+helpers.h
+/Users/christopherberglund/Projects/boac/helpers.h
+

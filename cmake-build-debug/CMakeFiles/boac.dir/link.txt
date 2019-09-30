@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/cc -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk -dynamiclib -Wl,-headerpad_max_install_names  -o libboac.dylib -install_name @rpath/libboac.dylib CMakeFiles/boac.dir/library.c.o CMakeFiles/boac.dir/helpers.c.o 
