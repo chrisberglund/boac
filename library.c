@@ -19,17 +19,16 @@
  * x: value to search for
  * returns: the index at which to insert provided value in order to maintain sort
  */
-int binary_search(int arr[], int l, int r, int x)
-{
+int binarySearch(const int arr[], int l, int r, int x) {
     int mid = l + (r - l) / 2;
     if (r >= l) {
         if (arr[mid] == x)
             return mid;
 
         if (arr[mid] > x)
-            return binary_search(arr, l, mid - 1, x);
+            return binarySearch(arr, l, mid - 1, x);
 
-        return binary_search(arr, mid + 1, r, x);
+        return binarySearch(arr, mid + 1, r, x);
     }
 
     return -1;
@@ -51,30 +50,28 @@ struct coordinates {
  * nrows: the number of rows
  * coords: output struct pointer to contain latitude and longitude
  */
-void bin2latlon(int bin, int nBinsInRow[], double latrows[], int basebins[], int nrows, struct coordinates *coords)
-{
+void bin2latlon(int bin, int nBinsInRow[], double latrows[], int basebins[], int nrows, struct coordinates *coords) {
     if (bin < 1) {
         bin = 1;
     }
-    int row = binary_search(basebins, 0, nrows, bin) - 1;
+    int row = binarySearch(basebins, 0, nrows, bin) - 1;
     double clat = latrows[row];
     double clon = 360.0 * (bin - basebins[row] + 0.5) / nBinsInRow[row] - 180.0;
-    coords -> latitude = clat;
-    coords -> longitude = clon;
+    coords->latitude = clat;
+    coords->longitude = clon;
 }
 
-void test(int* bins, double* data, int nrows, int nbins, int* nbins_in_row, int* basebins)
-{
+void test(int *bins, double *data, int nrows, int nbins, int *nbins_in_row, int *basebins) {
     int i, j;
-    double **data_grid = (double **)malloc(nrows * sizeof(double *));
+    double **data_grid = (double **) malloc(nrows * sizeof(double *));
     for (i = 0; i < nrows; i++) {
-        data_grid[i] = (double *)malloc(nbins_in_row[i] * sizeof(double));
+        data_grid[i] = (double *) malloc(nbins_in_row[i] * sizeof(double));
     }
     int bin_index;
-    for (i=0; i<nrows; ++i) {
-        for (j=0; j<nbins_in_row[i]; ++j) {
+    for (i = 0; i < nrows; ++i) {
+        for (j = 0; j < nbins_in_row[i]; ++j) {
             printf("%d", j);
-            bin_index = binary_search(bins, 0, nbins, basebins[i]);
+            bin_index = binarySearch(bins, 0, nbins, basebins[i]);
             if (bin_index >= 0) {
                 data_grid[i][j] = data[bin_index];
             }
@@ -86,45 +83,48 @@ void test(int* bins, double* data, int nrows, int nbins, int* nbins_in_row, int*
     free(data_grid);
 }
 
-
-
 /*
- * Function: gridBins
- * ------------------
- * Determines latitude, longitude, and arithmetic mean data values for each bin
- * bins: array containing the id for all bins
- * data: array containing the weighted sum of the data value for each bin
- * weights: array containing weights for each bin
- * nbins: the total number of bins
- * nrows: the total number of rows
- * lats: output array to write latitude values to
- * lons: output array to write longitude values to
- * dataOut: output array to write mean data values to
+ *
  */
-void gridBins(int* bins, double* data, double* weights,  int nbins, int nrows, double* lats, double* lons, double* dataOut)
-{
-    double *latlon;
-    double latrows[nrows];
-    int nbins_in_row[nrows];
-    int basebins[nrows];
-    int i;
-    for (i=0; i < nrows; ++i) {
-        latrows[i] = ((i + 0.5) * 180.0 / nrows) - 90;
-        nbins_in_row[i] = 2 * nrows * cos(latrows[i] * M_PI / 180.0) + 0.5;
-        if (i == 0) {
-            basebins[i] = 1;
-        } else {
-            basebins[i] = basebins[i-1] + nbins_in_row[i-1];
+int getFiveSlice(int bins[], int bin, int binIndex, int row, int nbins,
+                 int neighborBins[5][5], const int *nBinsinRow, const int basebins[]) {
+    int distance = 2;
+    int neighborIndex;
+    int nsNeighbor;
+    double ratio;
+    for (int i = 0; i < 5; i++) {
+        ratio = (bin - basebins[row]) / (double) nBinsinRow[row];
+        nsNeighbor = ((int) round(ratio * nBinsinRow[row + (i - distance)]) + basebins[row + i - distance]);
+        for (int j = 0; j < 5; j++) {
+            if (j == 2) {
+                if (i == 2) {
+                    neighborBins[i][j] = bin;
+                } else if (i < 2) {
+                    neighborIndex = binarySearch(bins, 0, binIndex, nsNeighbor);
+                    neighborBins[i][j] = bins[neighborIndex];
+                } else {
+                    neighborIndex = binarySearch(bins, binIndex, nbins, nsNeighbor);
+                    neighborBins[i][j] = bins[neighborIndex];
+                }
+            } else if (i == 2) {
+                if (bins[binIndex + (j - distance)] == bin + (j - distance)) {
+                    neighborBins[i][j] = binIndex + (j - distance);
+                } else {
+                    neighborBins[i][j] = -1;
+                }
+            } else {
+                if (i < 2) {
+                    neighborIndex = binarySearch(bins, 0, nbins, nsNeighbor + (j - distance));
+                    neighborBins[i][j] = bins[neighborIndex];
+                } else {
+                    neighborIndex = binarySearch(bins, binIndex, nbins, nsNeighbor + (j - distance));
+                    neighborBins[i][j] = bins[neighborIndex];
+                }
+            }
+            if (neighborBins[i][j] == -1) {
+                return -1;
+            }
         }
     }
-    test(bins, data, nrows, nbins, nbins_in_row, basebins);
-    struct coordinates *coords;
-    coords = (struct coordinates *) malloc(sizeof(struct coordinates));
-    for (i=0; i < nbins; ++i) {
-        bin2latlon(bins[i], nbins_in_row, latrows, basebins, nrows, coords);
-        lats[i] = coords -> latitude;
-        lons[i] = coords -> longitude;
-        dataOut[i] = data[i] / weights[i];
-    }
-    free(coords);
+    return 1;
 }
