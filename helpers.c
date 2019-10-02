@@ -59,7 +59,7 @@ double median(const double arr[], int length) {
     if (length % 2 == 0) {
         median = (copy[(length/2)-1] + copy[length/2])/2;
     } else {
-        median = copy[(int)round(length/2)];
+        median = copy[(int)round(length/2.0)];
     }
     return median;
 }
