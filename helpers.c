@@ -32,6 +32,23 @@ void quickSort(double arr[], int low, int high) {
     }
 }
 
+/*
+ * Function: flatten2DArray
+ * ------------------------
+ * Takes 2-D array with given shape and writes to 1-D array while maintaining order
+ * nrows: number of rows in 2-D array
+ * ncols: number of cols in 2-D array
+ * arr: pointer to 2-D array
+ * out: pointer to output array of length nrows * ncols
+ */
+void flatten2DArray(int nrows, int ncols, float arr[][ncols],  float* out) {
+    for (int i = 0; i < nrows; i++) {
+        for (int j = 0; j < ncols; j++) {
+            out[ncols + j] = arr[i][j];
+        }
+    }
+}
+
 double median(const double arr[], int length) {
     double copy[length];
     double median;
