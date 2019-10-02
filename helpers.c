@@ -66,7 +66,7 @@ void flatten2DArray(double** arr, double* out,int nrows, int ncols) {
 }
 
 double median(const double arr[], int length) {
-    double *copy = (double *)malloc(sizeof(double)*length);
+    double *copy = (double *)malloc(length * sizeof(double));
     double median;
     for (int i = 0; i < length; i++) {
         copy[i] = arr[i];
