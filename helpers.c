@@ -1,6 +1,3 @@
-//
-// Created by Christopher Berglund on 9/30/19.
-//
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -48,14 +45,12 @@ void quickSort(double* arr, int low, int high) {
     }
 }
 
-/*
- * Function: flatten2DArray
- * ------------------------
- * Takes 2-D array with given shape and writes to 1-D array while maintaining order
- * nrows: number of rows in 2-D array
- * ncols: number of cols in 2-D array
- * arr: pointer to 2-D array
- * out: pointer to output array of length nrows * ncols
+/**
+ * Takes 2-D array with given shape and write to 1-D array while maintaining order
+ * @param arr pointer to 2-D array
+ * @param out pointer to output array of length nrows * ncols
+ * @param nrows number of rows in 2-D array
+ * @param ncols number of columns in 2-D array
  */
 void flatten2DArray(double** arr, double* out,int nrows, int ncols) {
     for (int i = 0; i < nrows; i++) {

@@ -8,16 +8,14 @@
 #define TRUE 1
 #define FALSE 0
 
-/*
- * Function: isExtrema
- * -------------------
+/**
  * Checks if element at given position in an array is either the maximum or minimum value
- * idx: index value of the element check
- * arr: array to check for max or min values
- * length: length of the array
- * return: 1 if element is max or min, 0 if not
+ * @param idx index value of the element check
+ * @param arr array to check for max or min values
+ * @param length length of the array
+ * @return 1 if element is max or min, 0 if not
  */
-int isExtrema(int idx, const double* arr, int length) {
+int isExtrema(int idx, const double *arr, int length) {
     int isMax = FALSE;
     int isMin = FALSE;
     int isEqual = FALSE;
@@ -38,21 +36,19 @@ int isExtrema(int idx, const double* arr, int length) {
     return (isMax != isMin) && (!isEqual);
 }
 
-/*
- * Function: isWindowExtrema
- * -------------------------
+/**
  * Determines if the center of a square 2-D window is a maximum or minimum along NW-SE, NE-SW, N-S, and E-W axes
- * :width width of the 2-D array
- * :window pointer to 2-D array containing data values
- * return: 1 is center is an extrema and 0 if it is not
+ * @param width width of the 2-D array
+ * @param window pointer to 2-D array containing data values
+ * @return  1 if center is an extrema and 0 if it is not
  */
-int isWindowExtrema(int width, double** window) {
-    double *slice = (double *)malloc(sizeof(double)*width);
+int isWindowExtrema(int width, double **window) {
+    double *slice = (double *) malloc(sizeof(double) * width);
     int extrema = FALSE;
-    int center = (int)(width - 1) / 2;
+    int center = (int) (width - 1) / 2;
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < width; j++) {
-            switch(i) {
+            switch (i) {
                 //Northwest to Southeast slice
                 case 0:
                     slice[j] = window[j][j];
@@ -65,7 +61,7 @@ int isWindowExtrema(int width, double** window) {
 
                     //Northeast to Southwest Slice
                 case 2:
-                    slice[j] = window[j][width-j-1];
+                    slice[j] = window[j][width - j - 1];
                     break;
 
                     //West to East Slice
@@ -84,67 +80,84 @@ int isWindowExtrema(int width, double** window) {
     return extrema;
 }
 
-/*
- * Function: getNeighborBin
- * ------------------------
+/**
  * Finds the bin number north or south of given bin by given distance. This function determines
  * the neighboring bin number by using the ratio between the number of bins in a row difference between the bin numbers
  * of the first bin in a row and the bin of interest. Rounding to the nearest bin number is done.
- * bin: bin number of the bin of interest
- * row: row number of the bin
- * distance: number of rows away from the bin of interest to look for neighbor with positive values for north and
+ * @param bin bin number of the bin of interest
+ * @param row row: row number of the bin
+ * @param distance number of rows away from the bin of interest to look for neighbor with positive values for north and
  * negative numbers for south
- * nBinsInRow: pointer to array containing the number of bins in each row
- * basebins: pointer to array containing the bin number of the first bin of each row
+ * @param nBinsInRow pointer to array containing the number of bins in each row
+ * @param basebins pointer to array containing the bin number of the first bin of each row
+ * @return
  */
-int getNeighborBin(int bin, int row, int distance,  const int* nBinsInRow, const int* basebins) {
+int getNeighborBin(int bin, int row, int distance, const int *nBinsInRow, const int *basebins) {
     int neighbor;
     double ratio;
-    ratio = (bin-basebins[row]) / (double) nBinsInRow[row];
-    neighbor = ((int) round(ratio * nBinsInRow[row+distance]) + basebins[row+distance]);
+    ratio = (bin - basebins[row]) / (double) nBinsInRow[row];
+    neighbor = ((int) round(ratio * nBinsInRow[row + distance]) + basebins[row + distance]);
     return neighbor;
 }
 
-/*
- * Function: getWindow
- * -------------------
+/**
  * Creates a n*n subset of a set of bins centered around a specified bin
- * bin: bin to center window on
- * row: row the center bin is in
- * width: dimension of window. it must be an odd number
- * data: data to subset
- * nBinsInRow: pointer to an array containing the number of bins in each row
- * basebins: pointer to an array containing the bin number of the first bin of each row
- * window: pointer to nxn 2-D array to write data values to
+ * @param bin bin to center window on
+ * @param row row the center bin is in
+ * @param width dimension of window. it must be an odd number
+ * @param data data to subset
+ * @param nBinsInRow pointer to an array containing the number of bins in each row
+ * @param basebins pointer to an array containing the bin number of the first bin of each row
+ * @param window pointer to nxn 2-D array to write data values to
  */
-void getWindow(int bin, int row, int width, const double* data, const int* nBinsInRow,
-               const int* basebins, double** window) {
-    int maxDistance = round(width/2);
+void getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
+               const int *basebins, double **window) {
+    int maxDistance = (int) round((double) width / 2);
     int nsNeighbor;
     for (int i = 0; i < width; i++) {
         nsNeighbor = getNeighborBin(bin, row, i - maxDistance, nBinsInRow, basebins);
-        for (int j= 0; j < width; j++) {
+        for (int j = 0; j < width; j++) {
             window[i][j] = data[nsNeighbor + (j - maxDistance) - 1];
         }
     }
 }
 
-double applyMedianFilter(double** window, int width) {
-    double *flattened = (double *)malloc(sizeof(double)*(width*width));
+/**
+ * Takes a nxn window and applies a median filter to the center value if it is the maximum or minimum value
+ * in a n-2xn-2 window, but not a maximum or minimum value in 4 linear slices through the 5x5 window.
+ * @param window pointer to a 2-D array containing the 5x5 window
+ * @param width width of the window
+ * @return center pixel value resulting from the contextual median filter
+ */
+double applyMedianFilter(double **window, int width) {
+    double *flattened = (double *) malloc(sizeof(double) * (width * width));
     flatten2DArray(window, flattened, width, width);
     double mdn = median(flattened, (width * width));
     free(flattened);
     return mdn;
 }
 
-void contextualMedianFilter(int* bins, double* data, double* filteredData, int nbins, int nrows, int* nBinsInRow, int* basebins) {
-    double **fiveWindow  = allocateMatrix(5,5);
-    double **threeWindow = allocateMatrix(3,3);
+/**
+ * Applies a contextual 3x3 median filter to all bin values with sufficient padding. The function iterates through the
+ * bins with a 5x5 moving window. If the center pixel in a window is a maximum or minimum value in a 3x3 subwindow but
+ * not in 4 linear slices of the 5x5 window, it is replaces with the median value of the 3x3 window. TODO: handle border and fill values
+ * @param bins pointer to array of nbins length containing the bin numbers for all the bins in the world
+ * @param data pointer to an array of nbins length containing bin data values to use in median filter
+ * @param filteredData pointer to an array of nbins length to write filtered values to
+ * @param nbins number of bins in the world
+ * @param nrows number of bin containing rows
+ * @param nBinsInRow pointer to an array of nrows length containing the number of bins in each row
+ * @param basebins pointer to an array of nrows length containing the bin number of the first bin in each row
+ */
+void contextualMedianFilter(int* bins, double *data, double *filteredData, int nbins, int nrows,
+                            int *nBinsInRow, int *basebins) {
+    double **fiveWindow = allocateMatrix(5, 5);
+    double **threeWindow = allocateMatrix(3, 3);
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
-        if (bins[i] < basebins[row] + 2 || bins[i] > basebins[row+1] - 3 || row < 2 || row > nrows - 3) {
-            if (i == basebins[row]+nBinsInRow[row] - 1) {
+        if (bins[i] < basebins[row] + 2 || bins[i] > basebins[row + 1] - 3 || row < 2 || row > nrows - 3) {
+            if (i == basebins[row] + nBinsInRow[row] - 1) {
                 row++;
             }
             filteredData[i] = value;
@@ -158,11 +171,11 @@ void contextualMedianFilter(int* bins, double* data, double* filteredData, int n
             value = applyMedianFilter(threeWindow, 3);
         }
         filteredData[i] = value;
-        if ((i+1)/nBinsInRow[row] == 1) {
+        if ((i + 1) / nBinsInRow[row] == 1) {
             row++;
         }
     }
 
-    freeMatrix(fiveWindow,5);
-    freeMatrix(threeWindow,3);
+    freeMatrix(fiveWindow, 5);
+    freeMatrix(threeWindow, 3);
 }

@@ -1,16 +1,18 @@
-//
-// Created by Christopher Berglund on 10/2/19.
-//
 #include <stdio.h>
 #include <math.h>
 #include "sobel.h"
 #include "filter.h"
 #include "helpers.h"
 
-double convolution(double* window, int* kernel, int size) {
+/**
+ * Performs a convolution with provided kernel on a given window of same size dimensions.
+ * @param window pointer to an array of size * size length containing data values to perform convolution on
+ * @param kernel pointer to an array of size * size length containing convolution kernel
+ * @param size length of one dimension of the window
+ * @return value resulting from convolution
+ */
+double convolution(const double* window, const int* kernel, int size) {
     double sum = 0;
-    double test;
-    int kernelval;
     for(int i=0; i<size; i++) {
         sum += window[i] * kernel[size-i-1];
     }
@@ -31,10 +33,7 @@ double binSobel(double** window) {
 void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* nBinsInRow, int* basebins) {
     double **threeWindow = allocateMatrix(3,3);
     int row = 0;
-    int foobar = basebins[row];
     for (int i = 0; i < nbins; i++) {
-        foobar = basebins[row];
-        int foo = bins[i];
         double value = data[i];
         if (bins[i] == basebins[row]  || bins[i] == basebins[row+1] - 1 || row == 0 || row == nrows - 1) {
             if (bins[i]== basebins[row+1] - 1) {

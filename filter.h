@@ -1,6 +1,3 @@
-//
-// Created by Christopher Berglund on 10/1/19.
-//
 
 #ifndef UNTITLED1_FILTER_H
 #define UNTITLED1_FILTER_H
