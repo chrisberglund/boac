@@ -1,3 +1,6 @@
+//
+// Created by Christopher Berglund on 10/2/19.
+//
 #include <stdio.h>
 #include <math.h>
 #include "sobel.h"
@@ -30,7 +33,18 @@ double binSobel(double** window) {
     return res;
 }
 
-void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* nBinsInRow, int* basebins) {
+/**
+ * function TODO: Handle fill values
+ * @param bins
+ * @param data
+ * @param output
+ * @param nbins
+ * @param nrows
+ * @param nBinsInRow
+ * @param basebins
+ * @param fillValue
+ */
+void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* nBinsInRow, int* basebins, int fillValue) {
     double **threeWindow = allocateMatrix(3,3);
     int row = 0;
     for (int i = 0; i < nbins; i++) {
@@ -42,7 +56,7 @@ void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* n
             output[i] = 0;
             continue;
         }
-        getWindow(bins[i], row,3, data, nBinsInRow, basebins, threeWindow);
+        getWindow(bins[i], row,3, data, nBinsInRow, basebins, threeWindow, fillValue);
         value = binSobel(threeWindow);
         output[i] = value;
         if (bins[i] == basebins[row+1] - 1) {

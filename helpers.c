@@ -17,6 +17,30 @@ void freeMatrix(double **arr, int r) {
     free(arr);
 }
 
+/**
+ * Finds the index of the closest value in a sorted array
+ * @param arr sorted array
+ * @param l index of the left most value of interest
+ * @param r index of the right most value of interest
+ * @param x value to search for
+ * @return index of the closest value in the array
+ */
+int findClosestValue(int arr[], int l, int r, int x)
+{
+    int mid = l + (r - l) / 2;
+    if (r >= l) {
+        if (arr[mid] == x)
+            return mid;
+
+        if (arr[mid] > x)
+            return findClosestValue(arr, l, mid - 1, x);
+
+        return findClosestValue(arr, mid + 1, r, x);
+    }
+
+    return mid;
+}
+
 void swap(double *a, double *b) {
     double t = *a;
     *a = *b;

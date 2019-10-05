@@ -104,22 +104,28 @@ int getNeighborBin(int bin, int row, int distance, const int *nBinsInRow, const 
  * Creates a n*n subset of a set of bins centered around a specified bin
  * @param bin bin to center window on
  * @param row row the center bin is in
+ * @param nrows total number of rows in world
  * @param width dimension of window. it must be an odd number
  * @param data data to subset
  * @param nBinsInRow pointer to an array containing the number of bins in each row
  * @param basebins pointer to an array containing the bin number of the first bin of each row
  * @param window pointer to nxn 2-D array to write data values to
  */
-void getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
-               const int *basebins, double **window) {
-    int maxDistance = (int) round((double) width / 2);
+int getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
+              const int *basebins, double **window, double fillValue) {
+    int maxDistance = (int) round((width-1.0) / 2);
     int nsNeighbor;
+
     for (int i = 0; i < width; i++) {
         nsNeighbor = getNeighborBin(bin, row, i - maxDistance, nBinsInRow, basebins);
         for (int j = 0; j < width; j++) {
+            if (data[nsNeighbor + (j - maxDistance) - 1] == fillValue) {
+                return 0;
+            }
             window[i][j] = data[nsNeighbor + (j - maxDistance) - 1];
         }
     }
+    return 1;
 }
 
 /**
@@ -140,7 +146,7 @@ double applyMedianFilter(double **window, int width) {
 /**
  * Applies a contextual 3x3 median filter to all bin values with sufficient padding. The function iterates through the
  * bins with a 5x5 moving window. If the center pixel in a window is a maximum or minimum value in a 3x3 subwindow but
- * not in 4 linear slices of the 5x5 window, it is replaces with the median value of the 3x3 window. TODO: handle border and fill values
+ * not in 4 linear slices of the 5x5 window, it is replaces with the median value of the 3x3 window.
  * @param bins pointer to array of nbins length containing the bin numbers for all the bins in the world
  * @param data pointer to an array of nbins length containing bin data values to use in median filter
  * @param filteredData pointer to an array of nbins length to write filtered values to
@@ -150,9 +156,10 @@ double applyMedianFilter(double **window, int width) {
  * @param basebins pointer to an array of nrows length containing the bin number of the first bin in each row
  */
 void contextualMedianFilter(int* bins, double *data, double *filteredData, int nbins, int nrows,
-                            int *nBinsInRow, int *basebins) {
+                            int *nBinsInRow, int *basebins, double fillValue) {
     double **fiveWindow = allocateMatrix(5, 5);
     double **threeWindow = allocateMatrix(3, 3);
+    int isValid;
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
@@ -160,11 +167,15 @@ void contextualMedianFilter(int* bins, double *data, double *filteredData, int n
             if (i == basebins[row] + nBinsInRow[row] - 1) {
                 row++;
             }
-            filteredData[i] = value;
+            filteredData[i] = fillValue;
             continue;
         }
-        getWindow(bins[i], row, 5, data, nBinsInRow, basebins, fiveWindow);
-        getWindow(bins[i], row, 3, data, nBinsInRow, basebins, threeWindow);
+        isValid = getWindow(bins[i], row, 5, data, nBinsInRow, basebins, fiveWindow, fillValue);
+        if (!isValid) {
+            filteredData[i] = fillValue;
+            continue;
+        }
+        getWindow(bins[i], row, 3, data, nBinsInRow, basebins, threeWindow, fillValue);
         int isFivePeak = isWindowExtrema(5, fiveWindow);
         int isThreePeak = isWindowExtrema(3, threeWindow);
         if (isThreePeak && !isFivePeak) {

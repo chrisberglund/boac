@@ -5,4 +5,5 @@ void flatten2DArray(double** arr, double* out,int nrows, int ncols);
 double median(const double arr[], int length);
 double **allocateMatrix(int r, int c);
 void freeMatrix(double **arr, int n);
+int findClosestValue(int arr[], int l, int r, int x);
 #endif //UNTITLED1_HELPERS_H
