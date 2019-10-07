@@ -47,7 +47,7 @@ void swap(double *a, double *b) {
     *b = t;
 }
 
-int partition(double arr[], int low, int high) {
+int partition(double arr[], long low, long high) {
     double pivot = arr[high];
     int i = (low - 1);
 

@@ -101,7 +101,7 @@ int getNeighborBin(int bin, int row, int distance, const int *nBinsInRow, const 
 }
 
 /**
- * Creates a n*n subset of a set of bins centered around a specified bin
+ * Creates a n*n subset of a set of bins centered around a specified bin.
  * @param bin bin to center window on
  * @param row row the center bin is in
  * @param nrows total number of rows in world
@@ -113,16 +113,22 @@ int getNeighborBin(int bin, int row, int distance, const int *nBinsInRow, const 
  */
 int getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
               const int *basebins, double **window, double fillValue) {
-    int maxDistance = (int) round((width-1.0) / 2);
+    int maxDistance = (int) round((width - 1.0) / 2);
     int nsNeighbor;
-
     for (int i = 0; i < width; i++) {
         nsNeighbor = getNeighborBin(bin, row, i - maxDistance, nBinsInRow, basebins);
+        int neighborRow = row+i-maxDistance;
         for (int j = 0; j < width; j++) {
+            if (nsNeighbor + (j - maxDistance) < basebins[neighborRow]) {
+                window[i][j] = data[basebins[neighborRow] + nBinsInRow[neighborRow] + (j - maxDistance)];
+            } else if (nsNeighbor + (j - maxDistance) - 1 >= basebins[neighborRow + 1]) {
+                window[i][j] = data[basebins[neighborRow] + (j - maxDistance) - 1];
+            } else {
+                window[i][j] = data[nsNeighbor + (j - maxDistance) - 1];
+            }
             if (data[nsNeighbor + (j - maxDistance) - 1] == fillValue) {
                 return 0;
             }
-            window[i][j] = data[nsNeighbor + (j - maxDistance) - 1];
         }
     }
     return 1;
@@ -155,7 +161,7 @@ double applyMedianFilter(double **window, int width) {
  * @param nBinsInRow pointer to an array of nrows length containing the number of bins in each row
  * @param basebins pointer to an array of nrows length containing the bin number of the first bin in each row
  */
-void contextualMedianFilter(int* bins, double *data, double *filteredData, int nbins, int nrows,
+void contextualMedianFilter(int *bins, double *data, double *filteredData, int nbins, int nrows,
                             int *nBinsInRow, int *basebins, double fillValue) {
     double **fiveWindow = allocateMatrix(5, 5);
     double **threeWindow = allocateMatrix(3, 3);
@@ -163,10 +169,10 @@ void contextualMedianFilter(int* bins, double *data, double *filteredData, int n
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
-        if (bins[i] < basebins[row] + 2 || bins[i] > basebins[row + 1] - 3 || row < 2 || row > nrows - 3) {
-            if (i == basebins[row] + nBinsInRow[row] - 1) {
-                row++;
-            }
+        if (i == basebins[row] + nBinsInRow[row]) {
+            row++;
+        }
+        if (row < 2 || row > nrows - 3) {
             filteredData[i] = fillValue;
             continue;
         }

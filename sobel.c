@@ -34,7 +34,7 @@ double binSobel(double** window) {
 }
 
 /**
- * function TODO: Handle fill values
+ * function
  * @param bins
  * @param data
  * @param output
@@ -49,11 +49,11 @@ void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* n
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
-        if (bins[i] == basebins[row]  || bins[i] == basebins[row+1] - 1 || row == 0 || row == nrows - 1) {
-            if (bins[i]== basebins[row+1] - 1) {
-                row++;
-            }
-            output[i] = 0;
+        if (bins[i]== basebins[row+1]) {
+            row++;
+        }
+        if (row < 2 || row > nrows - 3) {
+            output[i] = fillValue;
             continue;
         }
         getWindow(bins[i], row,3, data, nBinsInRow, basebins, threeWindow, fillValue);
