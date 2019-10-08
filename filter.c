@@ -1,12 +1,12 @@
-#include <stdio.h>
+/**
+ * Functions for applying the contextual median filter to an array of bins using sliding 5x5 and 3x3 windows
+ */
+
 #include <stdlib.h>
 #include <math.h>
+#include <stdbool.h>
 #include "filter.h"
 #include "helpers.h"
-
-
-#define TRUE 1
-#define FALSE 0
 
 /**
  * Checks if element at given position in an array is either the maximum or minimum value
@@ -16,9 +16,9 @@
  * @return 1 if element is max or min, 0 if not
  */
 int isExtrema(int idx, const double *arr, int length) {
-    int isMax = FALSE;
-    int isMin = FALSE;
-    int isEqual = FALSE;
+    bool isMax = false;
+    bool isMin = false;
+    bool isEqual = false;
     double x = arr[idx];
 
     for (int i = 0; i < length; i++) {
@@ -26,11 +26,11 @@ int isExtrema(int idx, const double *arr, int length) {
             continue;
         }
         if (x > arr[i]) {
-            isMax = TRUE;
+            isMax = true;
         } else if (x < arr[i]) {
-            isMin = TRUE;
+            isMin = true;
         } else if (x == arr[i]) {
-            isEqual = TRUE;
+            isEqual = true;
         }
     }
     return (isMax != isMin) && (!isEqual);
@@ -42,9 +42,9 @@ int isExtrema(int idx, const double *arr, int length) {
  * @param window pointer to 2-D array containing data values
  * @return  1 if center is an extrema and 0 if it is not
  */
-int isWindowExtrema(int width, double **window) {
+bool isWindowExtrema(int width, double **window) {
     double *slice = (double *) malloc(sizeof(double) * width);
-    int extrema = FALSE;
+    bool extrema = false;
     int center = (int) (width - 1) / 2;
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < width; j++) {

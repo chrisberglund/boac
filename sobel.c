@@ -1,7 +1,7 @@
-//
-// Created by Christopher Berglund on 10/2/19.
-//
-#include <stdio.h>
+/**
+ * Functions for applying a sobel operator to bins
+ */
+
 #include <math.h>
 #include "sobel.h"
 #include "filter.h"
@@ -22,6 +22,11 @@ double convolution(const double* window, const int* kernel, int size) {
     return sum;
 }
 
+/**
+ * Applies a sobel operator to a bin
+ * @param window pointer to a 3x3 array containing data values TODO: change implementation to use a 1D array
+ * @return magnitude of the result of sobel operation
+ */
 double binSobel(double** window) {
     double oneDWindow[9];
     flatten2DArray(window, oneDWindow, 3, 3);
@@ -34,21 +39,22 @@ double binSobel(double** window) {
 }
 
 /**
- * function
- * @param bins
- * @param data
- * @param output
- * @param nbins
- * @param nrows
- * @param nBinsInRow
- * @param basebins
- * @param fillValue
+ * Applies sobel operator to each bin
+ * @param bins pointer to an array containing the bin number of each bin in the binning scheme
+ * @param data pointer to an array containing the data value for each bin
+ * @param output pointer to an empty array of nbins length to write magnitude of sobel operator values to
+ * @param nbins number of bins in the binning scheme
+ * @param nrows number of rows in the binning scheme
+ * @param nBinsInRow pointer to an array containing the number of bins in each row
+ * @param basebins pointer to an array containing the bin number of the first bin in each row
+ * @param fillValue value empty bins are filled with
  */
-void sobel(int* bins, double* data, double* output, int nbins, int nrows, int* nBinsInRow, int* basebins, int fillValue) {
+void sobel(int *bins, double *data, double *output, int nbins, int nrows, int *nBinsInRow,
+        int *basebins, double fillValue) {
     double **threeWindow = allocateMatrix(3,3);
     int row = 0;
     for (int i = 0; i < nbins; i++) {
-        double value = data[i];
+        double value;
         if (bins[i]== basebins[row+1]) {
             row++;
         }

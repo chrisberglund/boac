@@ -1,3 +1,7 @@
 .idea/
 cmake-build-debug/
+out/
 CMakeLists.txt
+*.so
+*.o
+*.nc

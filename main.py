@@ -6,53 +6,59 @@ import pandas as pd
 import geopandas as gpd
 
 
-def grid_bins(bins, weights, nbins, nrows, data, date):
+def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False):
     """
-    Takes lists representing bins from level 3 binned MODIS data and calculates coordinate pairs for each bin
-    :param bins: List of the id numbers for each bin
-    :param weights: List of pixel weights used in calculating mean value for bin
-    :param nbins: Number of bins in binned data set
-    :param nrows: Number of rows in binned data set
-    :param data: List of data values for each bin
-    :param date: Date for binned file
-    :return: Pandas dataframe containing latitudes, longitudes, and data values for each bin
+    Performs the Belkin-O'Reilly front detection algorithm on the provided bins
+    :param total_bins: total number of bins in the binning scheme
+    :param nrows: number of rows in the binning scheme
+    :param fill_value: value to fill empty bins with
+    :param bins: bin numbers for all data containing bins
+    :param data: weighted sum of the data for each bin
+    :param weights: weights used to calculate weighted sum for each bin
+    :param date: date of the temporal bin
+    :param chlor_a: if the data is chlorophyll a concentration, the natural lograithm of the data will be used
+    in edge detection default is false
+    :return: pandas dataframe containing bin values of each bin resulting from edge detection algorithm
     """
-    _latlon = ctypes.CDLL('latlon.so')
-    _latlon.gridBins.argtypes = (
-        ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float),
-        ctypes.c_int, ctypes.c_int, ctypes.POINTER(ctypes.c_float),
-        ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float))
+    _boa = ctypes.CDLL('boa.so')
+    _boa.boa.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.POINTER(ctypes.c_int),
+                         ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
+                         ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
+                         ctypes.POINTER(ctypes.c_double), ctypes.c_int)
 
-    bins_array_type = ctypes.c_int * nbins
-    lats = (ctypes.c_float * nbins)()
+    bins_array_type = ctypes.c_int * len(bins)
+    lats = (ctypes.c_double * total_bins)()
 
-    lons = (ctypes.c_float * nbins)()
-    sst_array = (ctypes.c_float * nbins)(*data)
-    sst_out = (ctypes.c_float * nbins)()
-    weights_array = (ctypes.c_float * nbins)(*weights)
-    _latlon.gridBins(bins_array_type(*bins), sst_array, weights_array, ctypes.c_int(nbins),
-                     ctypes.c_int(nrows), lats, lons, sst_out)
-
+    lons = (ctypes.c_double * total_bins)()
+    data_array = (ctypes.c_double * len(data))(*data)
+    data_out = (ctypes.c_double * total_bins)()
+    weights_array = (ctypes.c_double * len(bins))(*weights)
+    _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), data_array, weights_array, lats, lons,
+             data_out, 1)
     lats = list(lats)
     lons = list(lons)
-    ssts = list(sst_out)
-    df = pd.DataFrame(data={"Latitude": lats, "Longitude": lons, "SST": ssts, "Date": date})
+    final_data = list(data_out)
+    df = pd.DataFrame(
+        data={"Latitude": lats, "Longitude": lons, "Data": final_data, "Date": np.repeat(date, len(lats))})
     return df
 
 
-def get_params(dataset):
+def get_params(dataset, data_str):
     """
-    Parses values from netCDF4 file for use in calculating lat/lon values for each bin
+    Parses values from netCDF4 file for use in Belkin-O'Reilly algorithm
     :param dataset: netCDF4 object containing data
-    :return:
+    :param data_str: string key for data in netCDF4 Dataset object
+    :return: the total number of bins in binning scheme, the number of rows, list of all data containing bins,
+    data value for each bin, weight value for each bin
     """
-    nrows = len(dataset.groups['level-3_binned_data']['BinIndex'])
-    binlist = np.array(dataset.groups['level-3_binned_data']['BinList'][:].tolist())
-    sst = np.array(dataset.groups['level-3_binned_data']['chlor_a'][:].tolist())[:, 0]
-    bins = binlist[:, 0]
+    total_bins = np.array(dataset.groups["level-3_binned_data"]["BinIndex"][:].tolist())[:, 3].sum()
+    nrows = len(dataset.groups["level-3_binned_data"]["BinIndex"])
+    binlist = np.array(dataset["level-3_binned_data"]["BinList"][:].tolist())
+    bins = binlist[:, 0].astype("int")
     weights = binlist[:, 3]
-    nbins = len(bins)
-    return bins, weights, nbins, nrows, sst
+    data = np.array(dataset.groups["level-3_binned_data"][data_str][:].tolist())[:, 0]
+
+    return total_bins, nrows, bins, data, weights
 
 
 def map_bins(dataset, latmin, latmax, lonmin, lonmax):
@@ -65,8 +71,8 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     :return: geodataframe containing latitudes, longitudes, and data values of all bins within given extent
     """
-    bins, weights, nbins, nrows, sst = get_params(dataset)
-    df = grid_bins(bins.astype("int"), weights, nbins, nrows, sst, dataset.time_coverage_start)
+    total_bins, nrows, bins, data, weights = get_params(dataset, "chlor_a")
+    df = boa(total_bins, nrows, -999.0, bins, data, weights, data)
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
     gdf = gpd.GeoDataFrame(
@@ -77,8 +83,8 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
 
 def map_files(directory, latmin, latmax, lonmin, lonmax):
     """
-    Takes a directory of netCDF4 files of binned satellite data and creates shapefiles containing the data values
-    for each bin
+    Takes a directory of netCDF4 files of binned satellite data and creates shapefiles containing the values from
+    the edge detection algorithm for each bin
     :param directory: directory path containing all netCDF4 files
     :param latmin: minimum latitude to include in output
     :param latmax: maximum latitude to include in output
@@ -105,4 +111,5 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
 
         print("Finished %s", year_month)
 
-map_files("/Users/christopherberglund/Desktop/testncdf", -90, 90, -180, 180)
+
+map_files("/testncdf", -90, 90, -180, 180)
