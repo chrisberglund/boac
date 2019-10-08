@@ -42,7 +42,7 @@ int isExtrema(int idx, const double *arr, int length) {
  * @param window pointer to 2-D array containing data values
  * @return  1 if center is an extrema and 0 if it is not
  */
-bool isWindowExtrema(int width, double **window) {
+int isWindowExtrema(int width, double **window) {
     double *slice = (double *) malloc(sizeof(double) * width);
     bool extrema = false;
     int center = (int) (width - 1) / 2;
@@ -169,9 +169,7 @@ void contextualMedianFilter(int *bins, double *data, double *filteredData, int n
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
-        if (i == basebins[row] + nBinsInRow[row]) {
-            row++;
-        }
+
         if (row < 2 || row > nrows - 3) {
             filteredData[i] = fillValue;
             continue;
@@ -188,7 +186,7 @@ void contextualMedianFilter(int *bins, double *data, double *filteredData, int n
             value = applyMedianFilter(threeWindow, 3);
         }
         filteredData[i] = value;
-        if ((i + 1) / nBinsInRow[row] == 1) {
+        if (i == basebins[row] + nBinsInRow[row] - 1) {
             row++;
         }
     }

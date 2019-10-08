@@ -2,7 +2,7 @@
 #define UNTITLED1_FILTER_H
 
 int isExtrema(int idx, const double arr[], int length);
-bool isWindowExtrema(int width, double** window);
+int isWindowExtrema(int width, double** window);
 int getWindow(int bin, int row, int width, const double* data, const int* nBinsInRow,
               const int* basebins, double** fiveWindow, double fillValue);
 void contextualMedianFilter(int* bins, double* data, double* filteredData, int nbins, int nrows,

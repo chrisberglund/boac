@@ -34,7 +34,7 @@ def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False)
     data_out = (ctypes.c_double * total_bins)()
     weights_array = (ctypes.c_double * len(bins))(*weights)
     _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), data_array, weights_array, lats, lons,
-             data_out, 1)
+             data_out, 0)
     lats = list(lats)
     lons = list(lons)
     final_data = list(data_out)
@@ -57,8 +57,9 @@ def get_params(dataset, data_str):
     bins = binlist[:, 0].astype("int")
     weights = binlist[:, 3]
     data = np.array(dataset.groups["level-3_binned_data"][data_str][:].tolist())[:, 0]
+    date = dataset.time_coverage_start
 
-    return total_bins, nrows, bins, data, weights
+    return total_bins, nrows, bins, data, weights, date
 
 
 def map_bins(dataset, latmin, latmax, lonmin, lonmax):
@@ -71,8 +72,8 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     :return: geodataframe containing latitudes, longitudes, and data values of all bins within given extent
     """
-    total_bins, nrows, bins, data, weights = get_params(dataset, "chlor_a")
-    df = boa(total_bins, nrows, -999.0, bins, data, weights, data)
+    total_bins, nrows, bins, data, weights, date = get_params(dataset, "chlor_a")
+    df = boa(total_bins, nrows, -999.0, bins, data, weights, date)
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
     gdf = gpd.GeoDataFrame(
@@ -112,4 +113,4 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
         print("Finished %s", year_month)
 
 
-map_files("/testncdf", -90, 90, -180, 180)
+map_files("/Users/christopherberglund/Desktop/testncdf", -90, 90, -180, 180)
