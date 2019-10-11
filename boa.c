@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "prefilter.h"
 #include "filter.h"
+#include "threshold.h"
 #include "sobel.h"
 
 void boa(int totalBins, int nDataBins, int nrows, double fillValue,
@@ -18,9 +19,11 @@ void boa(int totalBins, int nDataBins, int nrows, double fillValue,
     double *filteredData = (double *) malloc(sizeof(double) * totalBins);
     contextualMedianFilter(bins, data, filteredData, totalBins, nrows, nBinsInRow, basebins, fillValue);
     free(data);
-
-    sobel(bins, filteredData, outData, totalBins, nrows, nBinsInRow, basebins, fillValue);
+    double *magnitude = (double *) malloc(sizeof(double) * totalBins);
+    sobel(bins, filteredData, magnitude, totalBins, nrows, nBinsInRow, basebins, fillValue);
     free(filteredData);
+    applyThreshold(bins, magnitude, outData, totalBins, nrows, nBinsInRow, basebins, fillValue);
+    free(magnitude);
     free(nBinsInRow);
     free(basebins);
     free(bins);

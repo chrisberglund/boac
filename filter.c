@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include "filter.h"
 #include "helpers.h"
 
@@ -42,7 +43,7 @@ int isExtrema(int idx, const double *arr, int length) {
  * @param window pointer to 2-D array containing data values
  * @return  1 if center is an extrema and 0 if it is not
  */
-int isWindowExtrema(int width, double **window) {
+int isWindowExtrema(int width, double *window) {
     double *slice = (double *) malloc(sizeof(double) * width);
     bool extrema = false;
     int center = (int) (width - 1) / 2;
@@ -51,22 +52,21 @@ int isWindowExtrema(int width, double **window) {
             switch (i) {
                 //Northwest to Southeast slice
                 case 0:
-                    slice[j] = window[j][j];
+                    slice[j] = window[j * width + j];
                     break;
-
                     //North to South Slice
                 case 1:
-                    slice[j] = window[j][center];
+                    slice[j] = window[j*width + center];
                     break;
 
                     //Northeast to Southwest Slice
                 case 2:
-                    slice[j] = window[j][width - j - 1];
+                    slice[j] = window[j * width + width - j -1];
                     break;
 
                     //West to East Slice
                 case 3:
-                    slice[j] = window[center][j];
+                    slice[j] = window[center * width + j];
                     break;
                 default:
                     break;
@@ -111,27 +111,43 @@ int getNeighborBin(int bin, int row, int distance, const int *nBinsInRow, const 
  * @param basebins pointer to an array containing the bin number of the first bin of each row
  * @param window pointer to nxn 2-D array to write data values to
  */
-int getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
-              const int *basebins, double **window, double fillValue) {
+bool getWindow(int bin, int row, int width, const double *data, const int *nBinsInRow,
+              const int *basebins, double *window, double fillValue, bool fill) {
     int maxDistance = (int) round((width - 1.0) / 2);
     int nsNeighbor;
+    double mdn = -9999;
+    if (data[bin-1] == fillValue) {
+        return false;
+    }
     for (int i = 0; i < width; i++) {
         nsNeighbor = getNeighborBin(bin, row, i - maxDistance, nBinsInRow, basebins);
         int neighborRow = row+i-maxDistance;
         for (int j = 0; j < width; j++) {
             if (nsNeighbor + (j - maxDistance) < basebins[neighborRow]) {
-                window[i][j] = data[basebins[neighborRow] + nBinsInRow[neighborRow] + (j - maxDistance)];
+                window[i * width + j] = data[basebins[neighborRow] + nBinsInRow[neighborRow] + (j - maxDistance)];
             } else if (nsNeighbor + (j - maxDistance) - 1 >= basebins[neighborRow + 1]) {
-                window[i][j] = data[basebins[neighborRow] + (j - maxDistance) - 1];
+                window[i * width + j] = data[basebins[neighborRow] + (j - maxDistance) - 1];
             } else {
-                window[i][j] = data[nsNeighbor + (j - maxDistance) - 1];
+                window[i * width + j] = data[nsNeighbor + (j - maxDistance) - 1];
             }
-            if (data[nsNeighbor + (j - maxDistance) - 1] == fillValue) {
-                return 0;
+            if (window[i * width + j] == fillValue && fill) {
+                return false;
             }
         }
     }
-    return 1;
+    if (!fill) {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < width; j++) {
+                if (window[i * width + j] == fillValue) {
+                    if (mdn == -9999) {
+                        mdn = median(window, (width * width));
+                    }
+                    window[i * width + j] = mdn;
+                }
+            }
+        }
+    }
+    return true;
 }
 
 /**
@@ -141,11 +157,8 @@ int getWindow(int bin, int row, int width, const double *data, const int *nBinsI
  * @param width width of the window
  * @return center pixel value resulting from the contextual median filter
  */
-double applyMedianFilter(double **window, int width) {
-    double *flattened = (double *) malloc(sizeof(double) * (width * width));
-    flatten2DArray(window, flattened, width, width);
-    double mdn = median(flattened, (width * width));
-    free(flattened);
+double applyMedianFilter(double *window, int width) {
+    double mdn = median(window, (width * width));
     return mdn;
 }
 
@@ -163,23 +176,27 @@ double applyMedianFilter(double **window, int width) {
  */
 void contextualMedianFilter(int *bins, double *data, double *filteredData, int nbins, int nrows,
                             int *nBinsInRow, int *basebins, double fillValue) {
-    double **fiveWindow = allocateMatrix(5, 5);
-    double **threeWindow = allocateMatrix(3, 3);
+    double *fiveWindow = (double *) malloc(sizeof(double) * 25);
+    double *threeWindow = (double *) malloc(sizeof(double) * 9);
     int isValid;
     int row = 0;
     for (int i = 0; i < nbins; i++) {
         double value = data[i];
 
+        if (i == basebins[row] + nBinsInRow[row]) {
+            row++;
+        }
+
         if (row < 2 || row > nrows - 3) {
             filteredData[i] = fillValue;
             continue;
         }
-        isValid = getWindow(bins[i], row, 5, data, nBinsInRow, basebins, fiveWindow, fillValue);
+        isValid = getWindow(bins[i], row, 5, data, nBinsInRow, basebins, fiveWindow, fillValue, false);
         if (!isValid) {
             filteredData[i] = fillValue;
             continue;
         }
-        getWindow(bins[i], row, 3, data, nBinsInRow, basebins, threeWindow, fillValue);
+        getWindow(bins[i], row, 3, data, nBinsInRow, basebins, threeWindow, fillValue, false);
         int isFivePeak = isWindowExtrema(5, fiveWindow);
         int isThreePeak = isWindowExtrema(3, threeWindow);
         if (isThreePeak && !isFivePeak) {
@@ -191,6 +208,6 @@ void contextualMedianFilter(int *bins, double *data, double *filteredData, int n
         }
     }
 
-    freeMatrix(fiveWindow, 5);
-    freeMatrix(threeWindow, 3);
+    free(fiveWindow);
+    free(threeWindow);
 }

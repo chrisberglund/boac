@@ -24,7 +24,7 @@ def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False)
     _boa.boa.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.POINTER(ctypes.c_int),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
-                         ctypes.POINTER(ctypes.c_double), ctypes.c_int)
+                         ctypes.POINTER(ctypes.c_double), ctypes.c_bool)
 
     bins_array_type = ctypes.c_int * len(bins)
     lats = (ctypes.c_double * total_bins)()
@@ -73,13 +73,14 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     :return: geodataframe containing latitudes, longitudes, and data values of all bins within given extent
     """
     total_bins, nrows, bins, data, weights, date = get_params(dataset, "chlor_a")
-    df = boa(total_bins, nrows, -999.0, bins, data, weights, date)
+    df = boa(total_bins, nrows, -999.0, bins, data, weights, date, True)
+    print("Cropping")
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
-    gdf = gpd.GeoDataFrame(
-        df, geometry=gpd.points_from_xy(df.Longitude, df.Latitude))
-    gdf.crs = "+proj=sinu +lon_0=0 +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs"
-    return gdf
+    df = df[df['Data'] > -999]
+    df = df[df['Data'] < 2]
+    df.to_csv('/Users/christopherberglund/Desktop/test.csv')
+    return df
 
 
 def map_files(directory, latmin, latmax, lonmin, lonmax):
@@ -106,11 +107,12 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
         if not os.path.exists(cwd + "/out/" + year_month):
             os.makedirs(cwd + "/out/" + year_month)
         try:
-            gdf.to_file(cwd + "/out/" + year_month + "/" + outfile)
+            print('test')
+            #gdf.to_file(cwd + "/out/" + year_month + "/" + outfile)
         except IOError as err:
             print("Error while attempting to save shapefile:", err)
 
         print("Finished %s", year_month)
 
 
-map_files("/Users/christopherberglund/Desktop/testncdf", -90, 90, -180, 180)
+map_files("/Users/christopherberglund/Desktop/testncdf", 20, 80, -180, -120)
