@@ -1,6 +1,3 @@
-//
-// Created by Christopher Berglund on 10/10/19.
-//
 #include <stdbool.h>
 #include <stdlib.h>
 #include "threshold.h"
@@ -31,13 +28,13 @@ int testThreshold(double value, double lowThreshold, double highThreshold, doubl
  * @return 1 if pixel is connected to or is a high pixel, 0 otherwise
  */
 bool isConnected(const double *window, int width) {
-    int center = width * (int)((width-1)/2.0) + (int)((width-1)/2.0);
+    int center = width * (int) ((width - 1) / 2.0) + (int) ((width - 1) / 2.0);
     if (window[center] == 2) {
         return true;
     }
     for (int i = 0; i < width; i++) {
         for (int j = 0; j < width; j++) {
-            if (window[i*3 + j] == 2 && window[center] >= 1) {
+            if (window[i * width + j] == 2 && window[center] >= 1) {
                 return true;
             }
         }

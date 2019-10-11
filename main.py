@@ -20,7 +20,7 @@ def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False)
     in edge detection default is false
     :return: pandas dataframe containing bin values of each bin resulting from edge detection algorithm
     """
-    _boa = ctypes.CDLL('boa.so')
+    _boa = ctypes.CDLL('./boa.so')
     _boa.boa.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.POINTER(ctypes.c_int),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
@@ -101,7 +101,8 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
         dataset = Dataset(directory + "/" + file)
         df = map_bins(dataset, latmin, latmax, lonmin, lonmax)
         year_month = dataset.time_coverage_start[:7]
-        outfile = year_month + '_chlor.csv'
+        date = dataset.time_coverage_start[:10]
+        outfile = date + '_chlor.csv'
         dataset.close()
         if not os.path.exists(cwd + "/out/" + year_month):
             os.makedirs(cwd + "/out/" + year_month)
