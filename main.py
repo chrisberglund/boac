@@ -3,7 +3,7 @@ import os
 from netCDF4 import Dataset
 import numpy as np
 import pandas as pd
-import geopandas as gpd
+import sys, getopt
 
 
 def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False):
@@ -79,7 +79,6 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
     df = df[df['Data'] > -999]
     df = df[df['Data'] < 2]
-    df.to_csv('/Users/christopherberglund/Desktop/test.csv')
     return df
 
 
@@ -100,19 +99,24 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
         if not file.endswith(".nc"):
             continue
         dataset = Dataset(directory + "/" + file)
-        gdf = map_bins(dataset, latmin, latmax, lonmin, lonmax)
+        df = map_bins(dataset, latmin, latmax, lonmin, lonmax)
         year_month = dataset.time_coverage_start[:7]
-        outfile = year_month + '_sst.shp'
+        outfile = year_month + '_chlor.csv'
         dataset.close()
         if not os.path.exists(cwd + "/out/" + year_month):
             os.makedirs(cwd + "/out/" + year_month)
         try:
-            print('test')
-            #gdf.to_file(cwd + "/out/" + year_month + "/" + outfile)
+            df.to_csv(cwd + "/out/" + year_month + "/" + outfile, index=False)
         except IOError as err:
             print("Error while attempting to save shapefile:", err)
 
-        print("Finished %s", year_month)
+        print("Finished writing file %s", outfile)
 
 
-map_files("/Users/christopherberglund/Desktop/testncdf", 20, 80, -180, -120)
+def main():
+    cwd = os.getcwd()
+    map_files(cwd + "/input", 20, 80, -180, -120)
+
+
+if __name__ == "__main__":
+    main()
