@@ -52,9 +52,12 @@ struct gradient binSobel(double* window) {
  * @return original magnitude value if pixel value is greater than neighboring pixels in the direction, otherwise
  * returns 0.
  */
-double nonmaxSupression(double* window, double theta, int width) {
+double nonmaxSupression(double* window, double theta, int width, double fillValue) {
     int center = (int) (width-1)/2 + (width-1)/2;
     double angle = theta * 180. / M_PI;
+
+    if (window[center] == fillValue)
+        return fillValue;
 
     double q = 999;
     double r = 999;
@@ -83,8 +86,6 @@ double nonmaxSupression(double* window, double theta, int width) {
         return 0.;
     }
 }
-
-
 
 /**
  * Applies sobel operator to each bin
@@ -121,8 +122,8 @@ void sobel(int *bins, double *data, double *dataOut, int nbins, int nrows, int *
             magnitude = g.G;
             theta = g.theta;
         } else {
-            magnitude = 0;
-            theta = 0;
+            magnitude = fillValue;
+            theta = fillValue;
         }
         magnitudes[i] = magnitude;
         thetas[i] = theta;
@@ -135,9 +136,12 @@ void sobel(int *bins, double *data, double *dataOut, int nbins, int nrows, int *
         if (row < 1 || row > nrows - 2) {
             dataOut[i] = 0;
             continue;
+        } else if (magnitudes[i] == fillValue) {
+            dataOut[i] = fillValue;
+            continue;
         }
         getWindow(bins[i], row,3, magnitudes, nBinsInRow, basebins, threeWindow, fillValue, false);
-        dataOut[i] = nonmaxSupression(threeWindow, thetas[i], 3);
+        dataOut[i] = nonmaxSupression(threeWindow, thetas[i], 3, fillValue);
     }
     free(magnitudes);
     free(thetas);

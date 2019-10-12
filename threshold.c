@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "threshold.h"
 #include "filter.h"
 
@@ -11,13 +12,13 @@
  * @param maxValid maximum valid value
  * @return 2 if pixel is above high threshold, 1 if pixel is above low threshold, and 0 if it is below both thresholds
  */
-int testThreshold(double value, double lowThreshold, double highThreshold, double maxValid) {
+double testThreshold(double value, double lowThreshold, double highThreshold, double maxValid) {
     if (value > highThreshold && value <= maxValid) {
-        return 2;
+        return 2.;
     } else if (value > lowThreshold && value <= maxValid) {
-        return 1;
+        return 1.;
     } else {
-        return 0;
+        return 0.;
     }
 }
 
@@ -52,14 +53,16 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
             row++;
         }
         if (row < 2 || row > nrows - 3) {
-            threshold[i] = 0.0;
+            output[i] = fillValue;
             continue;
         }
         threshold[i] = testThreshold(data[i], 0.4, 0.8, 2.0);
-        getWindow(bins[i], row, 3, threshold, nBinsInRow, basebins, window, fillValue, false);
-        if (isConnected(window, 3)) {
+        bool isValid = getWindow(bins[i], row, 3, threshold, nBinsInRow, basebins, window, fillValue, false);
+        if (data[i] == fillValue) {
+            output[i] = fillValue;
+        } else if (isConnected(window, 3) && isValid) {
             output[i] = 1;
-        } else {
+        } else if (isValid) {
             output[i] = 0;
         }
     }
