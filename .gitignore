@@ -7,3 +7,5 @@ CMakeLists.txt
 *.nc
 /test.r
 input/
+freq/
+/freq.py
