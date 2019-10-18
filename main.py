@@ -6,7 +6,7 @@ import pandas as pd
 import sys, getopt
 
 
-def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False):
+def boa(total_bins, nrows, fill_value, rows, bins, data, weights, date, chlor_a=False, glob=False):
     """
     Performs the Belkin-O'Reilly front detection algorithm on the provided bins
     :param total_bins: total number of bins in the binning scheme
@@ -22,19 +22,21 @@ def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False)
     """
     _boa = ctypes.CDLL('./boa.so')
     _boa.boa.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.POINTER(ctypes.c_int),
+                         ctypes.POINTER(ctypes.c_int),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
                          ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double),
-                         ctypes.POINTER(ctypes.c_double), ctypes.c_bool)
+                         ctypes.POINTER(ctypes.c_double), ctypes.c_bool, ctypes.c_bool)
 
     bins_array_type = ctypes.c_int * len(bins)
     lats = (ctypes.c_double * total_bins)()
 
     lons = (ctypes.c_double * total_bins)()
+    rows = (ctypes.c_int * len(rows))(*rows)
     data_array = (ctypes.c_double * len(data))(*data)
     data_out = (ctypes.c_double * total_bins)()
     weights_array = (ctypes.c_double * len(bins))(*weights)
-    _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), data_array, weights_array, lats, lons,
-             data_out, 0)
+    _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), rows, data_array, weights_array, lats, lons,
+             data_out, 1, 0)
     lats = list(lats)
     lons = list(lons)
     final_data = list(data_out)
@@ -43,7 +45,7 @@ def boa(total_bins, nrows, fill_value, bins, data, weights, date, chlor_a=False)
     return df
 
 
-def get_params(dataset, data_str):
+def get_params_modis(dataset, data_str):
     """
     Parses values from netCDF4 file for use in Belkin-O'Reilly algorithm
     :param dataset: netCDF4 object containing data
@@ -61,6 +63,15 @@ def get_params(dataset, data_str):
 
     return total_bins, nrows, bins, data, weights, date
 
+def get_params_glob(dataset, data_str):
+    total_bins = dataset.nb_grid_bins
+    nrows = 4320
+    bins = dataset.variables["col"][:]
+    rows = dataset.variables["row"][:]
+    weights = []
+    data = dataset.variables["CHL1_mean"][:]
+    date = dataset.time_coverage_start
+    return total_bins, nrows, rows, bins, data, weights, date
 
 def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     """
@@ -72,8 +83,10 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     :return: geodataframe containing latitudes, longitudes, and data values of all bins within given extent
     """
-    total_bins, nrows, bins, data, weights, date = get_params(dataset, "chlor_a")
-    df = boa(total_bins, nrows, -999.0, bins, data, weights, date, True)
+    total_bins, nrows, bins, data, weights, date = get_params_modis(dataset, "chlor_a")
+    rows = []
+    #total_bins, nrows, rows, bins, data, weights, date = get_params_glob(dataset, "chlor_a")
+    df = boa(total_bins, nrows, -999.0, rows, bins, data, weights, date, True, True)
     print("Cropping")
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]

@@ -90,3 +90,36 @@ void createFullBinArray(int totalBins, int nDataBins, int nrows, const int *data
         }
     }
 }
+
+void createFullBinArrayGlob(int totalBins, int nDataBins, const int* rows, int nrows, const int *dataBins, double fillValue,
+                        int *outBins, const double *inData, double *lats, double *lons, int *nBinsInRow, int *basebins,
+                        double *outData, bool chlora) {
+    double *latrows = (double *) malloc(sizeof(double) * nrows);
+    for (int i = 0; i < nrows; ++i) {
+        latrows[i] = ((i + 0.5) * 180.0 / nrows) - 90;
+        nBinsInRow[i] = (int) (2 * nrows * cos(latrows[i] * M_PI / 180.0) + 0.5);
+        if (i == 0) {
+            basebins[i] = 1;
+        } else {
+            basebins[i] = basebins[i - 1] + nBinsInRow[i - 1];
+        }
+    }
+    struct coordinates *coords;
+    coords = (struct coordinates *) malloc(sizeof(struct coordinates));
+    for (int i = 0; i < totalBins; i++) {
+        outBins[i] = i + 1;
+        outData[i] = fillValue;
+        bin2latlon(outBins[i], nBinsInRow, latrows, basebins, nrows, coords);
+        lats[i] = coords->latitude;
+        lons[i] = coords->longitude;
+    }
+    free(coords);
+    free(latrows);
+    for (int i = 0; i < nDataBins; i++) {
+        int bin = basebins[rows[i]] + dataBins[i];
+        outData[bin - 1] = inData[i];
+        if (chlora && outData[dataBins[i] - 1] != fillValue) {
+            outData[bin - 1] = log(outData[bin - 1]);
+        }
+    }
+}
