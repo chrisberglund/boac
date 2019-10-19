@@ -36,7 +36,7 @@ def boa(total_bins, nrows, fill_value, rows, bins, data, weights, date, chlor_a=
     data_out = (ctypes.c_double * total_bins)()
     weights_array = (ctypes.c_double * len(bins))(*weights)
     _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), rows, data_array, weights_array, lats, lons,
-             data_out, 1, 0)
+             data_out, chlor_a, glob)
     lats = list(lats)
     lons = list(lons)
     final_data = list(data_out)
@@ -70,10 +70,10 @@ def get_params_glob(dataset, data_str):
     rows = dataset.variables["row"][:]
     weights = []
     data = dataset.variables["CHL1_mean"][:]
-    date = dataset.time_coverage_start
+    date = dataset.period_start_day
     return total_bins, nrows, rows, bins, data, weights, date
 
-def map_bins(dataset, latmin, latmax, lonmin, lonmax):
+def map_bins(dataset, latmin, latmax, lonmin, lonmax,glob):
     """
     Takes a netCDF4 dataset of binned satellite data and creates a geodataframe with coordinates and bin data values
     :param dataset: netCDF4 dataset containing bins and data values
@@ -83,10 +83,12 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     :return: geodataframe containing latitudes, longitudes, and data values of all bins within given extent
     """
-    total_bins, nrows, bins, data, weights, date = get_params_modis(dataset, "chlor_a")
-    rows = []
-    #total_bins, nrows, rows, bins, data, weights, date = get_params_glob(dataset, "chlor_a")
-    df = boa(total_bins, nrows, -999.0, rows, bins, data, weights, date, True, True)
+    if glob:
+        total_bins, nrows, rows, bins, data, weights, date = get_params_glob(dataset, "chlor_a")
+    else:
+        total_bins, nrows, bins, data, weights, date = get_params_modis(dataset, "chlor_a")
+        rows = []
+    df = boa(total_bins, nrows, -999.0, rows, bins, data, weights, date, True, glob)
     print("Cropping")
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
@@ -106,15 +108,20 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     """
     cwd = os.getcwd()
+    glob=True
     if not os.path.exists(cwd + "/out"):
         os.makedirs(cwd + "/out")
     for file in os.listdir(directory):
         if not file.endswith(".nc"):
             continue
         dataset = Dataset(directory + "/" + file)
-        df = map_bins(dataset, latmin, latmax, lonmin, lonmax)
-        year_month = dataset.time_coverage_start[:7]
-        date = dataset.time_coverage_start[:10]
+        df = map_bins(dataset, latmin, latmax, lonmin, lonmax, glob)
+        if glob:
+            year_month = dataset.period_start_day[-2:]
+            date = dataset.period_start_day
+        else:
+            year_month = dataset.time_coverage_start[:7]
+            date = dataset.time_coverage_start[:10]
         outfile = date + '_chlor.csv'
         dataset.close()
         if not os.path.exists(cwd + "/out/" + year_month):

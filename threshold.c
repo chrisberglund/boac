@@ -56,7 +56,7 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
             output[i] = fillValue;
             continue;
         }
-        threshold[i] = testThreshold(data[i], 0.4, 0.8, 2.0);
+        threshold[i] = testThreshold(data[i], 0.3, 0.6, 2.0);
         bool isValid = getWindow(bins[i], row, 3, threshold, nBinsInRow, basebins, window, fillValue, false);
         if (data[i] == fillValue) {
             output[i] = fillValue;

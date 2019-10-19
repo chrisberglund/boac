@@ -12,8 +12,7 @@ void boa(int totalBins, int nDataBins, int nrows, double fillValue,
     int *nBinsInRow = (int *) malloc(sizeof(int) * nrows);
     int *basebins = (int *) malloc(sizeof(int) * nrows);
     int *bins = (int *) malloc(sizeof(int) * totalBins);
-    double *data = (double *) malloc(sizeof(double) * totalBins);
-    printf("%d", glob);
+    double *data = (double *) malloc(sizeof(double) * totalBins);\
     if (glob) {
         createFullBinArrayGlob(totalBins, nDataBins,rows, nrows, dataBins, fillValue,
                                bins, inData,
