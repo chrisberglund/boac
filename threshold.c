@@ -1,8 +1,183 @@
 #include <stdbool.h>
 #include <stdlib.h>
+#include <math.h>
 #include <stdio.h>
+#include <pthread.h>
 #include "threshold.h"
 #include "filter.h"
+#include "helpers.h"
+#include "quicksort.h"
+
+/**
+ * Gets the interquartile range
+ * @param data pointer to a sorted array containing all the data values
+ * @param nbins number of data values
+ * @return interquartile range
+ */
+double iqr(const double *data, int nbins) {
+    double *quartile = malloc(sizeof(double) * nbins/4);
+    int firstq = (int)nbins/4;
+    int secondq = (int)nbins/2;
+    for (int i = 0; i < firstq; i++) {
+        quartile[i] = data[i];
+    }
+    double firstmdn;
+    if (nbins % 2 == 0)
+        firstmdn = (quartile[((nbins/4 - 1) / 2) - 1] + quartile[(nbins/4 - 1) / 2]) / 2;
+    else
+        firstmdn = quartile[(int)((nbins/4.0 - 1) / 2.0)];
+    for (int i = 0; i < firstq; i++) {
+        quartile[i] = data[i+secondq];
+    }
+
+    double thirdmdn;
+    if (nbins % 2 == 0)
+        thirdmdn = (quartile[((nbins/4 - 1) / 2) - 1] + quartile[(nbins/4 - 1) / 2]) / 2;
+    else
+        thirdmdn = quartile[(int)((nbins/4.0 - 1) / 2.0)];
+    free(quartile);
+    return thirdmdn - firstmdn;
+}
+
+/**
+ * Calculates the histogram bin width using the Freedman–Diaconis rule
+ * @param data pointer to a sorted array containing all data values to histogram
+ * @param nbins number of data values
+ * @return optimal bin width for histogram
+ */
+double getBinWidth(double *data, int nbins) {
+    double range = iqr(data, nbins);
+    double h = 2 * range / cbrt(nbins);
+    printf("H: %f \n", h);
+    return h;
+}
+
+/**
+ * Calculates optimal high threshold method using OTSU method
+ * @param histogram histogram of data values
+ * @param k number of bins
+ * @return optimal high threshold value
+ */
+double otsuMethod(const double *histogram, int k, double h) {
+    double *probability = malloc(sizeof(double) * k);
+    double *mean = malloc(sizeof(double) * k);
+    double *between = malloc(sizeof(double) * k);
+    double max_between;
+    double threshold;
+
+    for (int i = 0; i < k; i++) {
+        probability[i] = 0.0;
+        mean[i] = 0.0;
+        between[i] = 0.0;
+    }
+    probability[0] = histogram[0];
+
+    for (int i = 1; i < k; i++) {
+        probability[i] = probability[i - 1] + histogram[i];
+        mean[i] = mean[i - 1] + i * histogram[i];
+    }
+
+    threshold = 0;
+    max_between = 0.0;
+
+    for (int i = 0; i < k; i++) {
+        if (probability[i] != 0.0 && probability[i] != 1.0)
+            between[i] = pow(mean[k-1] * probability[i] - mean[i], 2) / (probability[i] * (1.0 - probability[i]));
+        else
+            between[i] = 0.0;
+        if (between[i] > max_between) {
+            max_between = between[i];
+            threshold = i * h;
+        }
+    }
+    free(probability);
+    free(mean);
+    free(between);
+    printf("threshold: %f \n", threshold);
+    return threshold;
+}
+
+/**
+ * Creates histogram of provided data values with bin width determined by Freedman–Diaconis rule
+ * @param data pointer to a sorted array containing data to be made into histogram
+ * @param nbins number of data values
+ * @param h bin width
+ * @param k number of bins
+ * @param fillValue fill value
+ * @return pointer to an array containing histogram frequencies. Caller is responsible for freeing memory
+ */
+double* getHistogram(const double *data, int nbins, double h, int k, double fillValue) {
+    int *occurrence = malloc(sizeof(int) * k);
+    double *histogram = malloc(sizeof(double) * k);
+    for (int i = 0; i < k; i++) occurrence[i] = 0;
+    for (int i = 0; i < k; i++) histogram[i] = 0;
+    int ndatabins = 0;
+    for (int i = 0; i < nbins; i++) {
+        if (data[i] != fillValue) {
+            int binValue = (int) (data[i]/h);
+            occurrence[binValue] = occurrence[binValue] + 1;
+            ndatabins++;
+        }
+    }
+    for (int i = 0; i <= k; i++) {
+        histogram[i] = (double) occurrence[i] / (double) ndatabins;
+    }
+    free(occurrence);
+    return histogram;
+}
+
+struct Node {
+    int data;
+    struct Node* next;
+};
+
+/**
+ * Calculates the ideal high threshold value using OTSU method TODO: Separate out some of linked list implementation and handle too large values
+ * @param data pointer to an array containing all data values
+ * @param nbins number of data values
+ * @param fillValue fill value
+ * @return ideal high threshold value
+ */
+double getThreshold(const double *data, int nbins, double fillValue) {
+    struct Node* head = NULL;
+    struct Node* tail = NULL;
+    struct Node* tmp = NULL;
+
+    head = (struct Node*) malloc(sizeof(struct Node));
+    tail = head;
+    int nValidBins = 0;
+    for (int i = 0; i < nbins; i++) {
+        if (data[i] != fillValue && data[i] < 3.0) {
+            tail->data = i;
+            tmp = (struct Node *) malloc(sizeof(struct Node));
+            tail->next = tmp;
+            tail = tmp;
+            nValidBins++;
+        }
+    }
+    if (nValidBins == 0) {
+        free(head);
+        return -1*fillValue;
+    }
+    double *copy = (double *) malloc(sizeof(double) * nValidBins);
+    for (int i = 0; i < nValidBins; i++) {
+        copy[i] = data[head->data];
+        tmp = head;
+        head = head->next;
+        free(tmp);
+    }
+
+    sort(copy, nValidBins);
+    double h = getBinWidth(copy, nValidBins);
+    printf("max: %f \n",copy[nValidBins-1] );
+    printf("min: %f \n",copy[0] );
+    int k = (int)((copy[nValidBins-1] - copy[0]) / h);
+    double *histogram = getHistogram(copy, nValidBins, h, k, fillValue);
+    double threshold = otsuMethod(histogram, k, h);
+    free(histogram);
+    free(copy);
+    return threshold;
+}
 
 /**
  * Determines if a pixel is above the lower threshold or the higher threshold
@@ -48,6 +223,8 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
     int row = 0;
     double *threshold = (double *) malloc(sizeof(double) * nbins);
     double *window = (double *) malloc(sizeof(double) * 9);
+    double high = getThreshold(data, nbins, fillValue);
+    double low = 0.5 * high;
     for (int i = 0; i < nbins; i++) {
         if (i == basebins[row] + nBinsInRow[row]) {
             row++;
@@ -56,7 +233,7 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
             output[i] = fillValue;
             continue;
         }
-        threshold[i] = testThreshold(data[i], 0.4, 0.8, 2.0);
+        threshold[i] = testThreshold(data[i], low, high, 256.0);
         bool isValid = getWindow(bins[i], row, 3, threshold, nBinsInRow, basebins, window, fillValue, false);
         if (data[i] == fillValue) {
             output[i] = fillValue;

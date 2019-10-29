@@ -26,14 +26,20 @@ void boa(int totalBins, int nDataBins, int nrows, double fillValue,
     }
 
     double *filteredData = (double *) malloc(sizeof(double) * totalBins);
+    printf("Applying contextual median filter...");
     contextualMedianFilter(bins, data, filteredData, totalBins, nrows, nBinsInRow, basebins, fillValue);
     free(data);
+    printf(" Finished! \n");
     double *magnitude = (double *) malloc(sizeof(double) * totalBins);
+    printf("Applying sobel operator...");
     sobel(bins, filteredData, magnitude, totalBins, nrows, nBinsInRow, basebins, fillValue);
     free(filteredData);
+    printf(" Finished! \n");
+    printf("Thresholding \n");
     applyThreshold(bins, magnitude, outData, totalBins, nrows, nBinsInRow, basebins, fillValue);
     free(magnitude);
     free(nBinsInRow);
     free(basebins);
     free(bins);
+    printf(" Finished! ]n");
 }

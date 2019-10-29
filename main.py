@@ -3,7 +3,7 @@ import os
 from netCDF4 import Dataset
 import numpy as np
 import pandas as pd
-import sys, getopt
+from multiprocessing import Pool
 
 
 def boa(total_bins, nrows, fill_value, rows, bins, data, weights, date, chlor_a=False, glob=False):
@@ -96,6 +96,26 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax,glob):
     df = df[df['Data'] < 2]
     return df
 
+def map_file(args):
+    cwd = os.getcwd()
+    dataset = Dataset(args["file"])
+    df = map_bins(dataset, args["latmin"], args["latmax"], args["lonmin"], args["lonmax"], args["glob"])
+    if args["glob"]:
+        year_month = dataset.period_start_day[-2:]
+        date = dataset.period_start_day
+    else:
+        year_month = dataset.time_coverage_start[:7]
+        date = dataset.time_coverage_start[:10]
+    outfile = date + '_chlor.csv'
+    dataset.close()
+    if not os.path.exists(cwd + "/out/" + year_month):
+        os.makedirs(cwd + "/out/" + year_month)
+    try:
+        df.to_csv(cwd + "/out/" + year_month + "/" + outfile, index=False)
+    except IOError as err:
+        print("Error while attempting to save shapefile:", err)
+
+    print("Finished writing file %s", outfile)
 
 def map_files(directory, latmin, latmax, lonmin, lonmax):
     """
@@ -109,29 +129,15 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
     """
     cwd = os.getcwd()
     glob=True
+    files = []
     if not os.path.exists(cwd + "/out"):
         os.makedirs(cwd + "/out")
     for file in os.listdir(directory):
-        if not file.endswith(".nc"):
-            continue
-        dataset = Dataset(directory + "/" + file)
-        df = map_bins(dataset, latmin, latmax, lonmin, lonmax, glob)
-        if glob:
-            year_month = dataset.period_start_day[-2:]
-            date = dataset.period_start_day
-        else:
-            year_month = dataset.time_coverage_start[:7]
-            date = dataset.time_coverage_start[:10]
-        outfile = date + '_chlor.csv'
-        dataset.close()
-        if not os.path.exists(cwd + "/out/" + year_month):
-            os.makedirs(cwd + "/out/" + year_month)
-        try:
-            df.to_csv(cwd + "/out/" + year_month + "/" + outfile, index=False)
-        except IOError as err:
-            print("Error while attempting to save shapefile:", err)
-
-        print("Finished writing file %s", outfile)
+        if file.endswith(".nc"):
+            files.append({"file": directory + "/" + file, "latmin":latmin,
+                          "latmax":latmax, "lonmin":lonmin, "lonmax":lonmax, "glob":glob })
+    pool = Pool(os.cpu_count()-1)
+    pool.map(map_file, files)
 
 
 def main():

@@ -115,6 +115,8 @@ void createFullBinArrayGlob(int totalBins, int nDataBins, const int* rows, int n
     }
     free(coords);
     free(latrows);
+    if (chlora)
+        printf("Taking natural logarithm of data value");
     for (int i = 0; i < nDataBins; i++) {
         int bin = basebins[rows[i]] + dataBins[i];
         outData[bin - 1] = inData[i];
