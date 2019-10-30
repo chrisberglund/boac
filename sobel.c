@@ -4,6 +4,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include "sobel.h"
 #include "filter.h"
@@ -15,10 +16,10 @@
  * @param size length of one dimension of the window
  * @return value resulting from convolution
  */
-double convolution(const double* window, const int* kernel, int size) {
+double convolution(const double *window, const int *kernel, int size) {
     double sum = 0;
-    for(int i=0; i<size; i++) {
-        sum += window[i] * kernel[size-i-1];
+    for (int i = 0; i < size; i++) {
+        sum += window[i] * kernel[i];
     }
     return sum;
 }
@@ -33,7 +34,7 @@ struct gradient {
  * @param window pointer to an array of length 9 containing data values representing a 3x3 window
  * @return structure containing the direction and magnitude of the gradient
  */
-struct gradient binSobel(double* window) {
+struct gradient binSobel(double *window) {
     int GX[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
     int GY[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
     double sobelx = (convolution(window, GX, 9));
@@ -53,7 +54,7 @@ struct gradient binSobel(double* window) {
  * returns 0.
  */
 double nonmaxSupression(double* window, double theta, int width, double fillValue) {
-    int center = (int) (width-1)/2 + (width-1)/2;
+    int center = (int) (width-1)/2 + width * (width-1)/2;
     double angle = theta * 180. / M_PI;
 
     if (window[center] == fillValue)
@@ -86,7 +87,64 @@ double nonmaxSupression(double* window, double theta, int width, double fillValu
         return 0.;
     }
 }
+ /*
+double nonmaxSupression(double *window, double theta, int width, double fillValue) {
+    int center = (int) (width - 1) / 2 + width * (width - 1) / 2;
+    double angle = theta * 180. / M_PI;
 
+    if (window[center] == fillValue)
+        return fillValue;
+    double q = 999;
+    double r = 999;
+    double s = 999;
+    double t = 999;
+    if (angle < 0) {
+        angle += 180.;
+    }
+    if ((angle >= 0. && angle < 11.25) || (angle >= 168.75 && angle <= 180)) { // East-West
+        q = window[center + 1];
+        r = window[center - 1];
+        s = q;
+        t = r;
+    } else if (angle >= 11.25 && angle < 33.75) { // ENE-WSW
+        q = window[center + 1];
+        r = window[center - 1];
+        s = window[center + width - 1];
+        t = window[center - width + 1];
+    } else if (angle >= 33.75 && angle < 56.25) { //NE-SW
+        q = window[center + width - 1];
+        r = window[center - width + 1];
+        s = q;
+        t = r;
+    } else if (angle >= 56.25 && angle < 78.75) { //NNE-SSW
+        q = window[center + width - 1];
+        r = window[center - width + 1];
+        s = window[center + width];
+        t = window[center - width];
+    } else if (angle >= 78.75 && angle < 101.25) { //North-South
+        q = window[center + width];
+        r = window[center - width];
+    } else if (angle >= 101.25 && angle < 123.75) { //NNW-SSE
+        q = window[center + width];
+        r = window[center - width];
+        s = window[center - width - 1];
+        t = window[center + width + 1];
+    } else if (angle >= 112.5 && angle < 157.5) { //NW-SE
+        q = window[center - width - 1];
+        r = window[center + width + 1];
+    } else if (angle >= 157.5 && angle < 168.75) { //WNW-ESE
+        q = window[center + 1];
+        r = window[center - 1];
+        s = window[center - width - 1];
+        t = window[center + width + 1];
+    }
+    if (window[center] >= q && window[center] >= r && window[center] > -s && window[center] >= t) {
+        return window[center];
+    } else {
+        return 0.;
+    }
+}
+*/
 /**
  * Applies sobel operator to each bin
  * @param bins pointer to an array containing the bin number of each bin in the binning scheme
@@ -100,7 +158,7 @@ double nonmaxSupression(double* window, double theta, int width, double fillValu
  * @param fillValue value empty bins are filled with
  */
 void sobel(int *bins, double *data, double *dataOut, int nbins, int nrows, int *nBinsInRow,
-        int *basebins, double fillValue) {
+           int *basebins, double fillValue) {
     double *threeWindow = (double *) malloc(sizeof(double) * 9);
     double *magnitudes = (double *) malloc(sizeof(double) * nbins);
     double *thetas = (double *) malloc(sizeof(double) * nbins);
@@ -116,7 +174,7 @@ void sobel(int *bins, double *data, double *dataOut, int nbins, int nrows, int *
             thetas[i] = 0;
             continue;
         }
-        bool isValid = getWindow(bins[i], row,3, data, nBinsInRow, basebins, threeWindow, fillValue, true);
+        bool isValid = getWindow(bins[i], row, 3, data, nBinsInRow, basebins, threeWindow, fillValue, false);
         if (isValid) {
             struct gradient g = binSobel(threeWindow);
             magnitude = g.G;
@@ -134,13 +192,13 @@ void sobel(int *bins, double *data, double *dataOut, int nbins, int nrows, int *
             row++;
         }
         if (row < 1 || row > nrows - 2) {
-            dataOut[i] = 0;
+            dataOut[i] = fillValue;
             continue;
         } else if (magnitudes[i] == fillValue) {
             dataOut[i] = fillValue;
             continue;
         }
-        getWindow(bins[i], row,3, magnitudes, nBinsInRow, basebins, threeWindow, fillValue, false);
+        getWindow(bins[i], row, 3, magnitudes, nBinsInRow, basebins, threeWindow, fillValue, false);
         dataOut[i] = nonmaxSupression(threeWindow, thetas[i], 3, fillValue);
     }
     free(magnitudes);

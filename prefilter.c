@@ -91,9 +91,10 @@ void createFullBinArray(int totalBins, int nDataBins, int nrows, const int *data
     }
 }
 
-void createFullBinArrayGlob(int totalBins, int nDataBins, const int* rows, int nrows, const int *dataBins, double fillValue,
-                        int *outBins, const double *inData, double *lats, double *lons, int *nBinsInRow, int *basebins,
-                        double *outData, bool chlora) {
+void
+createFullBinArrayGlob(int totalBins, int nDataBins, const int *rows, int nrows, const int *dataBins, double fillValue,
+                       int *outBins, const double *inData, double *lats, double *lons, int *nBinsInRow, int *basebins,
+                       double *outData, bool chlora) {
     double *latrows = (double *) malloc(sizeof(double) * nrows);
     for (int i = 0; i < nrows; ++i) {
         latrows[i] = ((i + 0.5) * 180.0 / nrows) - 90;
@@ -115,8 +116,6 @@ void createFullBinArrayGlob(int totalBins, int nDataBins, const int* rows, int n
     }
     free(coords);
     free(latrows);
-    if (chlora)
-        printf("Taking natural logarithm of data value");
     for (int i = 0; i < nDataBins; i++) {
         int bin = basebins[rows[i]] + dataBins[i];
         outData[bin - 1] = inData[i];

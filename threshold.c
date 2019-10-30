@@ -29,16 +29,115 @@ double iqr(const double *data, int nbins) {
     for (int i = 0; i < firstq; i++) {
         quartile[i] = data[i+secondq];
     }
-
+    printf("firstmdn: %f \n", firstmdn);
     double thirdmdn;
     if (nbins % 2 == 0)
         thirdmdn = (quartile[((nbins/4 - 1) / 2) - 1] + quartile[(nbins/4 - 1) / 2]) / 2;
     else
         thirdmdn = quartile[(int)((nbins/4.0 - 1) / 2.0)];
+    printf("thirdmdn: %f \n", thirdmdn);
     free(quartile);
     return thirdmdn - firstmdn;
 }
 
+/**
+ * Creates histogram of provided data values with bin width determined by Freedman–Diaconis rule
+ * @param data pointer to a sorted array containing data to be made into histogram
+ * @param nbins number of data values
+ * @param h bin width
+ * @param k number of bins
+ * @param fillValue fill value
+ * @return pointer to an array containing histogram frequencies. Caller is responsible for freeing memory
+ */
+double* getHistogram(const double *data, int nbins, double h, int k, double fillValue) {
+    int *occurrence = malloc(sizeof(int) * k);
+    double *histogram = malloc(sizeof(double) * k);
+    for (int i = 0; i < k; i++) occurrence[i] = 0;
+    for (int i = 0; i < k; i++) histogram[i] = 0;
+    int ndatabins = 0;
+    for (int i = 0; i < nbins; i++) {
+        if (data[i] != fillValue) {
+            int binValue = (int) (data[i]/h);
+            occurrence[binValue] = occurrence[binValue] + 1;
+            ndatabins++;
+        }
+    }
+    for (int i = 0; i <= k; i++) {
+        histogram[i] = (double) occurrence[i] / (double) ndatabins;
+    }
+    free(occurrence);
+    return histogram;
+}
+
+double sumPOW(int *arr, double power, int length) {
+    double sum = 0;
+    for (int i = 0; i < length; i++) {
+        sum += pow(arr[i],power);
+    }
+    return sum;
+}
+/*
+double mse(int n, double h, int k, int *N) {
+    return (2.0/(n-1)*h) - ((n+1)/(pow(n,2)*(n-1)*h)*sumPOW(N, 2, k));
+}
+
+double secant( double xA, double xB, double(*f)(double) )
+{
+    double e = 1.0e-12;
+    double fA, fB;
+    double d;
+    int i;
+    int limit = 50;
+
+    fA=(*f)(xA);
+    for (i=0; i<limit; i++) {
+        fB=(*f)(xB);
+        d = (xB - xA) / (fB - fA) * fB;
+        if (fabs(d) < e)
+            break;
+        xA = xB;
+        fA = fB;
+        xB -= d;
+    }
+    if (i==limit) {
+        printf("Function is not converging near (%7.4f,%7.4f).\n", xA,xB);
+        return -99.0;
+    }
+    return xB;
+}
+
+double brent(double a, double b, double max, double min, int n, double *data, int ndata) {
+    double step = 1.0e-2;
+    double e = 1.0e-12;
+    double h = -1.032;		// just so we use secant method
+    double xx, value;
+    int k = ceil((max-min)/h);
+    int *occurrence = malloc(sizeof(int) * k);
+    for (int i = 0; i < k; i++) occurrence[i] = 0;
+    for (int i = 0; i < ndata; i++) {
+            int binValue = (int) (data[i]/h);
+            occurrence[binValue] = occurrence[binValue] + 1;
+        }
+    int s = (mse(n,h,k,occurrence)> 0.0);
+
+    while (h < 1.0) {
+        value = f(x);
+        if (fabs(value) < e) {
+            printf("Root found at x= %12.9f\n", x);
+            s = (f(x+.0001)>0.0);
+        }
+        else if ((value > 0.0) != s) {
+            xx = secant(x-step, x,&f);
+            if (xx != -99.0)   // -99 meaning secand method failed
+                printf("Root found at x= %12.9f\n", xx);
+            else
+                printf("Root found near x= %7.4f\n", x);
+            s = (f(x+.0001)>0.0);
+        }
+        x += step;
+    }
+    return 0;
+}*/
 /**
  * Calculates the histogram bin width using the Freedman–Diaconis rule
  * @param data pointer to a sorted array containing all data values to histogram
@@ -48,7 +147,6 @@ double iqr(const double *data, int nbins) {
 double getBinWidth(double *data, int nbins) {
     double range = iqr(data, nbins);
     double h = 2 * range / cbrt(nbins);
-    printf("H: %f \n", h);
     return h;
 }
 
@@ -97,34 +195,7 @@ double otsuMethod(const double *histogram, int k, double h) {
     return threshold;
 }
 
-/**
- * Creates histogram of provided data values with bin width determined by Freedman–Diaconis rule
- * @param data pointer to a sorted array containing data to be made into histogram
- * @param nbins number of data values
- * @param h bin width
- * @param k number of bins
- * @param fillValue fill value
- * @return pointer to an array containing histogram frequencies. Caller is responsible for freeing memory
- */
-double* getHistogram(const double *data, int nbins, double h, int k, double fillValue) {
-    int *occurrence = malloc(sizeof(int) * k);
-    double *histogram = malloc(sizeof(double) * k);
-    for (int i = 0; i < k; i++) occurrence[i] = 0;
-    for (int i = 0; i < k; i++) histogram[i] = 0;
-    int ndatabins = 0;
-    for (int i = 0; i < nbins; i++) {
-        if (data[i] != fillValue) {
-            int binValue = (int) (data[i]/h);
-            occurrence[binValue] = occurrence[binValue] + 1;
-            ndatabins++;
-        }
-    }
-    for (int i = 0; i <= k; i++) {
-        histogram[i] = (double) occurrence[i] / (double) ndatabins;
-    }
-    free(occurrence);
-    return histogram;
-}
+
 
 struct Node {
     int data;
@@ -166,11 +237,9 @@ double getThreshold(const double *data, int nbins, double fillValue) {
         head = head->next;
         free(tmp);
     }
-
     sort(copy, nValidBins);
     double h = getBinWidth(copy, nValidBins);
-    printf("max: %f \n",copy[nValidBins-1] );
-    printf("min: %f \n",copy[0] );
+    h = 0.1;
     int k = (int)((copy[nValidBins-1] - copy[0]) / h);
     double *histogram = getHistogram(copy, nValidBins, h, k, fillValue);
     double threshold = otsuMethod(histogram, k, h);
@@ -223,7 +292,7 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
     int row = 0;
     double *threshold = (double *) malloc(sizeof(double) * nbins);
     double *window = (double *) malloc(sizeof(double) * 9);
-    double high = getThreshold(data, nbins, fillValue);
+    double high = 1.5;
     double low = 0.5 * high;
     for (int i = 0; i < nbins; i++) {
         if (i == basebins[row] + nBinsInRow[row]) {

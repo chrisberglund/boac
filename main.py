@@ -88,12 +88,13 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax,glob):
     else:
         total_bins, nrows, bins, data, weights, date = get_params_modis(dataset, "chlor_a")
         rows = []
+    print(np.mean(data))
     df = boa(total_bins, nrows, -999.0, rows, bins, data, weights, date, True, glob)
     print("Cropping")
     df = df[(df.Latitude >= latmin) & (df.Latitude <= latmax) &
             (df.Longitude >= lonmin) & (df.Longitude <= lonmax)]
     df = df[df['Data'] > -999]
-    df = df[df['Data'] < 2]
+    df = df[df['Data'] < 40]
     return df
 
 def map_file(args):
@@ -128,7 +129,7 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     """
     cwd = os.getcwd()
-    glob=True
+    glob=False
     files = []
     if not os.path.exists(cwd + "/out"):
         os.makedirs(cwd + "/out")
@@ -136,13 +137,13 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
         if file.endswith(".nc"):
             files.append({"file": directory + "/" + file, "latmin":latmin,
                           "latmax":latmax, "lonmin":lonmin, "lonmax":lonmax, "glob":glob })
-    pool = Pool(os.cpu_count()-1)
+    pool = Pool(1)
     pool.map(map_file, files)
 
 
 def main():
     cwd = os.getcwd()
-    map_files(cwd + "/input", 20, 80, -180, -120)
+    map_files(cwd + "/input", 25, 75, -180, -120)
 
 
 if __name__ == "__main__":
