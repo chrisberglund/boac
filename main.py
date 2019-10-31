@@ -35,7 +35,8 @@ def boa(total_bins, nrows, fill_value, rows, bins, data, weights, date, chlor_a=
     data_array = (ctypes.c_double * len(data))(*data)
     data_out = (ctypes.c_double * total_bins)()
     weights_array = (ctypes.c_double * len(bins))(*weights)
-    _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), rows, data_array, weights_array, lats, lons,
+    _boa.boa(total_bins, len(bins), nrows, fill_value, bins_array_type(*bins), rows, data_array, weights_array, lats,
+             lons,
              data_out, chlor_a, glob)
     lats = list(lats)
     lons = list(lons)
@@ -63,6 +64,7 @@ def get_params_modis(dataset, data_str):
 
     return total_bins, nrows, bins, data, weights, date
 
+
 def get_params_glob(dataset, data_str):
     total_bins = dataset.nb_grid_bins
     nrows = 4320
@@ -73,7 +75,8 @@ def get_params_glob(dataset, data_str):
     date = dataset.period_start_day
     return total_bins, nrows, rows, bins, data, weights, date
 
-def map_bins(dataset, latmin, latmax, lonmin, lonmax,glob):
+
+def map_bins(dataset, latmin, latmax, lonmin, lonmax, glob):
     """
     Takes a netCDF4 dataset of binned satellite data and creates a geodataframe with coordinates and bin data values
     :param dataset: netCDF4 dataset containing bins and data values
@@ -97,6 +100,7 @@ def map_bins(dataset, latmin, latmax, lonmin, lonmax,glob):
     df = df[df['Data'] < 40]
     return df
 
+
 def map_file(args):
     cwd = os.getcwd()
     dataset = Dataset(args["file"])
@@ -107,7 +111,10 @@ def map_file(args):
     else:
         year_month = dataset.time_coverage_start[:7]
         date = dataset.time_coverage_start[:10]
-    outfile = date + '_chlor.csv'
+    if args["file"].endswith("SNPP_CHL.nc"):
+        outfile = date + "viirs_chlor.csv"
+    else:
+        outfile = date + '_chlor.csv'
     dataset.close()
     if not os.path.exists(cwd + "/out/" + year_month):
         os.makedirs(cwd + "/out/" + year_month)
@@ -117,6 +124,7 @@ def map_file(args):
         print("Error while attempting to save shapefile:", err)
 
     print("Finished writing file %s", outfile)
+
 
 def map_files(directory, latmin, latmax, lonmin, lonmax):
     """
@@ -129,15 +137,15 @@ def map_files(directory, latmin, latmax, lonmin, lonmax):
     :param lonmax: maximum longitude to include in output
     """
     cwd = os.getcwd()
-    glob=False
+    glob = False
     files = []
     if not os.path.exists(cwd + "/out"):
         os.makedirs(cwd + "/out")
     for file in os.listdir(directory):
         if file.endswith(".nc"):
-            files.append({"file": directory + "/" + file, "latmin":latmin,
-                          "latmax":latmax, "lonmin":lonmin, "lonmax":lonmax, "glob":glob })
-    pool = Pool(1)
+            files.append({"file": directory + "/" + file, "latmin": latmin,
+                          "latmax": latmax, "lonmin": lonmin, "lonmax": lonmax, "glob": glob})
+    pool = Pool(os.cpu_count()-1)
     pool.map(map_file, files)
 
 

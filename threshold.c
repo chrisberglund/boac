@@ -292,7 +292,7 @@ void applyThreshold(int *bins, double *data, double *output, int nbins, int nrow
     int row = 0;
     double *threshold = (double *) malloc(sizeof(double) * nbins);
     double *window = (double *) malloc(sizeof(double) * 9);
-    double high = 1.5;
+    double high = 2.0;
     double low = 0.5 * high;
     for (int i = 0; i < nbins; i++) {
         if (i == basebins[row] + nBinsInRow[row]) {
